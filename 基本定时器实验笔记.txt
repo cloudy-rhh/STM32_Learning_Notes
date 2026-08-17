@@ -1,0 +1,31 @@
+基本定时器实验
+	需要自己添加文件（tim.h，tim.c文件），和main.c放在同一级目录下（User层），会调用HAL库内容，要引入HAL库头文件（如果keil项目里未包含，记得手动添加）；
+	tim文件内容：
+	1.定义timX_init函数（一般基本定时器就是TIM6，TIM7，都可以）；
+	
+	提问：该怎么进行timX_init函数体的编程呢？
+	步骤：1.定义一个TIM结构体（全局变量）：TIM_HandleTypeDef g_tim7_handle（TIM_HandleTypeDef是一个定时器结构体，包含定时器参数）；
+		   2.使能TIMX外设时钟： __HAL_RCC_TIM7_CLK_ENABLE（）;
+		   3.定时器结构体成员赋值：g_tim7_handle.Instance，确定时钟号；
+		   					      g_tim7_handle.Init.Prescaler，确定预分频器（PSC，用于降低系统时钟频率）（计算公式：计数频率 = 系统时钟频率 /（PSC+1））；
+							      g_tim7_handle.Init.CounterMode，确定定时器模式（TIM_COUNTERMODE_UP代表向上计数（从0数到ARR），	TIM_COUNTERMODE_DOWN代表向下计数（从ARR数到0））；
+							      g_tim7_handle.Init.Period，确定自动重装载值（ARR，确定计数器数到多少次更新一次事件）（从0开始，实际次数为ARR+1）；
+							      g_tim7_handle.Init.AutoReloadPreload ，启用预装载功能（TIM_AUTORELOAD_PRELOAD_ENABLE代表启用，	TIM_AUTORELOAD_PRELOAD_DISABLE代表不启用，启用更加安全）；
+		   4.写入硬件寄存器： HAL_TIM_Base_Init(&g_tim7_handle);
+                   5.设置中断优先级：调用HAL_NVIC_SetPriority(TIMX_IRQn, 1, 0)（函数用法在GPIO笔记中有，但得改为TIM）；
+		   6.调用函数HAL_NVIC_EnableIRQ(TIMX_IRQn)（使CPU执行中断函数，开关使能，也得改为TIM）;
+		   7.启动定时器，使能中断：调用HAL_TIM_Base_Start_IT（&g_tim7_handle）（和GPIO的区别在于，GPIO实验在HAL_GPIO_Init中就会自动根据模式使能中断函	数，	而定时器实验则需要手动调用函数）。
+
+	2.定义定时器中断回调函数HAL_TIM_PeriodElapsedCallback；
+
+	提问：该怎么进行HAL_TIM_PeriodElapsedCallback函数体的编程呢？
+	步骤：1.在it文件中写一个TIMX_IRQHandler函数（X根据定时器号来决定，CPU会跳转使用），函数体里调用HAL_TIM_IRQHandler（&g_tim7_handle)（HAL库函数，	g_tim7_handle得通过extern TIM_HandleTypeDef g_tim7_handle调用进来）；
+		   2.重写callback函数，写业务逻辑。
+
+	说明：1.硬件被动响应，CPU会直接跳转到TIMX_IRQHandler函数（在it文件里）；
+		   2.TIMX_IRQHandler函数中会调用HAL_TIM_IRQHandler（&g_tim7_handle)；
+		   3.HAL_TIM_IRQHandler 检查并清除中断标志位，HAL_TIM_IRQHandler 调用 HAL_TIM_PeriodElapsedCallback（这个函数在HAL_TIM文件中）；
+		   4.最后执行自己编辑的业务逻辑，完成功能实现。
+
+	2.main函数使用：
+	由于定时器中断函数是硬件被动响应，因此主函数体中无需写多余代码，在初始化阶段（循环外）直接调用timX_init即可。
