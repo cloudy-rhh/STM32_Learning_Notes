@@ -35,9 +35,9 @@ int main(void)
     sys_stm32_clock_init(RCC_PLL_MUL9); /* 设置时钟, 72Mhz */
     delay_init(72);                     /* 延时初始化 */
     led_init();                         /* LED初始化 */
-		usart_init(115200);
-		exti_init();
-		tim2_pwm_init();
+	usart_init(115200);
+	exti_init();
+	tim2_pwm_init();
 		
     while(1)
     { 
